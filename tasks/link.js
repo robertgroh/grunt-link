@@ -24,14 +24,18 @@ module.exports = function (grunt) {
             done,
             cwd;
         if (options.dir) {
-            options.dir = path.resolve(process.cwd(), options.dir);
+            if (!Array.isArray(options.dir)) { options.dir = [ options.dir ]; }
+            options.dir = options.dir.map(function absPath(dir) {
+                return path.resolve(process.cwd(), dir);
+            });
         }
+
         done = this.async();
         cwd = process.cwd();
         linker(grunt, options).classic(function (err) {
             process.chdir(cwd);
             if (err) {
-                grunt.log.error("Error linking pacakages");
+                grunt.log.error("Error linking packages");
                 grunt.log.error(err.stack);
                 done(false);
             } else {

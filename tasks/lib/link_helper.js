@@ -3,7 +3,7 @@
 var path = require("path"),
     fs = require("fs");
 
-module.exports = function (baseDir) {
+module.exports = function (baseDirs) {
 
 
     function normalizePackageDeps(packageLinks) {
@@ -27,7 +27,7 @@ module.exports = function (baseDir) {
     }
 
     function getPackageName(loc) {
-        return getPackage(path.resolve(baseDir, loc)).name;
+        return getPackage(path.resolve(loc)).name;
     }
 
     function removeForced(arr) {
@@ -51,27 +51,37 @@ module.exports = function (baseDir) {
 
 
     function gatherPackages() {
-        var packages = {},
-            files = fs.readdirSync(baseDir);
-        files.forEach(function (file) {
-            var filePath = path.resolve(baseDir, file),
-                stat = fs.statSync(filePath);
-            if (stat.isDirectory()) {
-                try {
-                    packages[filePath] = getPackage(filePath);
-                } catch (e) {
-                    //squelch
+        var packages = {};
+
+        if (!Array.isArray(baseDirs)) { baseDirs = [ baseDirs ]; }
+
+        baseDirs.forEach(function findPackages(dir) {
+            var files = fs.readdirSync(dir);
+            files.forEach(function (file) {
+                var filePath = path.resolve(dir, file),
+                    stat = fs.statSync(filePath);
+                if (stat.isDirectory()) {
+                    try {
+                        packages[filePath] = getPackage(filePath);
+                    } catch (e) {
+                        //squelch
+                    }
                 }
-            }
+            });
         });
+
         return packages;
     }
 
-    function findLinks() {
+    function findLinks(linkDependencies) {
         var packages = gatherPackages(),
             ret = {};
         Object.keys(packages).forEach(function (location) {
-            ret[location] = packages[location].linkDependencies || [];
+            var deps = Object.keys(packages[location].dependencies),
+                intersection = deps.filter(function isMedessoModule(dep){
+                    return (linkDependencies.indexOf(dep) !== -1);
+                });
+            ret[location] = intersection || [];
         });
         return ret;
     }
@@ -145,8 +155,8 @@ module.exports = function (baseDir) {
         return {links: ret.concat(postLinks), cyclic: cyclic};
     }
 
-    function findSortAndNormalizeDeps() {
-        return sortByDeps(normalizePackageDeps(findLinks()));
+    function findSortAndNormalizeDeps(linkDependencies) {
+        return sortByDeps(normalizePackageDeps(findLinks(linkDependencies)));
     }
 
     return {

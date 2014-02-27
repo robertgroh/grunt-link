@@ -6,7 +6,15 @@ module.exports = function (grunt, options) {
 
     var util = require("util"),
         path = require("path"),
+        fs = require("fs"),
+        _ = require("underscore"),
         comb = require("comb"),
+        //npm = require("npm"),
+        shell = require("execSync"),
+
+        linkDependencies = Array.isArray(options.linkDependencies) ? options.linkDependencies
+                                                                  : [ options.linkDependencies ],
+
         helper = require("./link_helper")(options.dir || process.cwd()),
         getPackageName = helper.getPackageName,
         shouldLink = helper.shouldLink,
@@ -16,20 +24,62 @@ module.exports = function (grunt, options) {
         rimraf = comb.wrap(require("rimraf")),
         log = grunt.log,
         verbose = grunt.verbose,
-        sortedDeps = helper.findSortAndNormalizeDeps(),
+        sortedDeps = helper.findSortAndNormalizeDeps(linkDependencies),
         cyclic = sortedDeps.cyclic,
         errors = [],
         cwd = process.cwd();
 
+    function mkDirP(dirPath){
+        fs.mkdir(dirPath, function mkDirErrorHandling(e) {
+            if(e && e.code === 'EEXIST'){
+                grunt.log.debug('already exists: ' + path.resolve(dirPath));
+            } else {
+                throw e;
+            }
+        });
+    }
+
+    function link(target, linkName, options) {
+        options = _.defaults(options, {dep: null, force: false});
+        if(options.dep){
+            verbose.write(options.dep + '. ');
+        }
+        grunt.log.debug('cwd: ' + process.cwd() +
+                        (options.dep ? ' - link dep (' + options.dep + '): '
+                                    : ' - create link: ') +
+                        linkName + ' -> ' + target);
+        try{
+            fs.symlinkSync(target, linkName, 'junction');
+        } catch(error) {
+            if(options.force && error.code === 'EEXIST') {
+                rimraf(linkName).chain(function linkDepsClean() {
+                    fs.symlinkSync(target, linkName, 'junction');
+                });
+            } else {
+                throw error;
+            }
+        }
+    }
+
     function exec(cmds) {
+        var result;
+
         if (!comb.isArray(cmds)) {
             cmds = [cmds];
         }
-        return comb.async.array(cmds).forEach(function (cmd) {
+        return comb.async.array(cmds).forEach(function execLoop(cmd) {
             if (cmd) {
-                verbose.ok(util.format("Executing %s", cmd));
-                return execP(cmd);
+                if (typeof(cmd) == 'function'){
+                    verbose.write(util.format("Executing %s ", cmd.name));
+                    result = cmd();
+                    verbose.ok();
+                } else {
+                    //cmd is String!?
+                    verbose.ok(util.format("Executing %s.", cmd));
+                    result = shell.exec(cmd);
+                }
             }
+            return result;
         }, 1);
     }
 
@@ -42,7 +92,7 @@ module.exports = function (grunt, options) {
         return new comb.Promise().errback(new Error(errors.join("\n")));
     }
 
-    log.writeln("Linking packages");
+    log.subhead("Linking packages");
     return comb.async.array(sortedDeps.links).forEach(function (pkg) {
         try {
             var cmds = [],
@@ -50,16 +100,34 @@ module.exports = function (grunt, options) {
                 deps = pkg[1],
                 install = isBoolean(pkg[2]) ? pkg[2] : true,
                 loc = path.resolve(cwd, normalizeName(location));
-            log.ok("Linking " + getPackageName(loc));
+            log.subhead("Linking " + getPackageName(loc));
             process.chdir(loc);
             if (deps.length) {
-                cmds.push("npm link " + deps.join(" "));
+                cmds.push(function mkNodeModules(){
+                    mkDirP('node_modules');
+                });
+                deps.forEach(function loop(dep){
+                    cmds.push(function linkDeps(){
+                        link(path.join(options.prefix, dep), //target
+                             path.join('node_modules', dep), //linkName
+                             {'dep': dep, 'force': true});
+                    });
+                });
+                //cmds.push("npm link " + deps.join(" "));
             }
             if (options.install && install) {
                 cmds.push("npm install");
             }
             if (shouldLink(location)) {
-                cmds.push("npm link");
+                cmds.push(function mkPrefix(){
+                    mkDirP(options.prefix);
+                });
+                cmds.push(function createLink(){
+                    link(loc, //target
+                         path.join(options.prefix, path.basename(location)), //linkName
+                         {'force': true});
+                });
+                //cmds.push("npm link");
             }
             if (install) {
                 return options.clean ? rimraf(path.resolve(loc, "./node_modules")).chain(function () {
