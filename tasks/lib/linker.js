@@ -30,11 +30,14 @@ module.exports = function (grunt, options) {
         cwd = process.cwd();
 
     function mkDirP(dirPath){
+        //FIXME this is no mkdir -p!
         fs.mkdir(dirPath, function mkDirErrorHandling(e) {
-            if(e && e.code === 'EEXIST'){
-                grunt.log.debug('already exists: ' + path.resolve(dirPath));
-            } else {
-                throw e;
+            if(e) {
+                if (e.code !== 'EEXIST') {
+                    throw e;
+                } else {
+                    grunt.log.debug('already exists: ' + path.resolve(dirPath));
+                }
             }
         });
     }
@@ -69,7 +72,7 @@ module.exports = function (grunt, options) {
         }
         return comb.async.array(cmds).forEach(function execLoop(cmd) {
             if (cmd) {
-                if (typeof(cmd) == 'function'){
+                if (typeof(cmd) === 'function'){
                     verbose.write(util.format("Executing %s ", cmd.name));
                     result = cmd();
                     verbose.ok();
@@ -124,7 +127,7 @@ module.exports = function (grunt, options) {
                 });
                 cmds.push(function createLink(){
                     link(loc, //target
-                         path.join(options.prefix, path.basename(location)), //linkName
+                         path.join(options.prefix, getPackageName(loc)), //linkName
                          {'force': true});
                 });
                 //cmds.push("npm link");

@@ -29,7 +29,7 @@ module.exports = function (grunt) {
             globals: {}
         },
         link: {
-            dir: "test/test-project"
+            dir: 'test/test-project'
         }
     });
 

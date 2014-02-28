@@ -77,10 +77,13 @@ module.exports = function (baseDirs) {
         var packages = gatherPackages(),
             ret = {};
         Object.keys(packages).forEach(function (location) {
-            var deps = Object.keys(packages[location].dependencies),
-                intersection = deps.filter(function isMedessoModule(dep){
+            var deps = Object.keys(packages[location].dependencies || {}),
+                intersection = deps.filter(function isLinkDep(dep){
                     return (linkDependencies.indexOf(dep) !== -1);
                 });
+            if (packages[location].linkDependencies) {
+                intersection = intersection.concat(packages[location].linkDependencies);
+            }
             ret[location] = intersection || [];
         });
         return ret;
