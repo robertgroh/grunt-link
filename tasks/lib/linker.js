@@ -55,9 +55,8 @@ module.exports = function (grunt, options) {
             fs.symlinkSync(target, linkName, 'junction');
         } catch(error) {
             if(options.force && error.code === 'EEXIST') {
-                rimraf(linkName).chain(function linkDepsClean() {
-                    fs.symlinkSync(target, linkName, 'junction');
-                });
+                require("rimraf").sync(linkName);
+                fs.symlinkSync(target, linkName, 'junction');
             } else {
                 throw error;
             }
