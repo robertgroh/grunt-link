@@ -1,7 +1,7 @@
 {
   "name": "grunt-link",
   "description": "Grunt task to handle the linking of local dependencies",
-  "version": "0.1.3-medesso.1",
+  "version": "0.1.3-medesso.2",
   "homepage": "http://doug-martin.github.com/grunt-link",
   "author": {
     "name": "Doug Martin",
@@ -44,7 +44,7 @@
   "dependencies": {
     "comb": "~0.2.1",
     "rimraf": "~2.1.1",
-    "underscore": "^1.6.0",
-    "execSync": "^1.0.1-pre"
+    "underscore": "~1.6.0",
+    "execSync": "~1.0.1-pre"
   }
 }

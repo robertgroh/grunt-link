@@ -119,7 +119,7 @@ module.exports = function (grunt, options) {
                 //cmds.push("npm link " + deps.join(" "));
             }
             if (options.install && install) {
-                cmds.push("npm install");
+                cmds.push("npm install --production");
             }
             if (shouldLink(location)) {
                 cmds.push(function mkPrefix(){
