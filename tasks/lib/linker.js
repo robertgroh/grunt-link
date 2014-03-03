@@ -55,6 +55,7 @@ module.exports = function (grunt, options) {
             fs.symlinkSync(target, linkName, 'junction');
         } catch(error) {
             if(options.force && error.code === 'EEXIST') {
+                //FIXME synchron
                 require("rimraf").sync(linkName);
                 fs.symlinkSync(target, linkName, 'junction');
             } else {
