@@ -31,15 +31,15 @@ module.exports = function (grunt, options) {
 
     function mkDirP(dirPath){
         //FIXME this is no mkdir -p!
-        fs.mkdir(dirPath, function mkDirErrorHandling(e) {
-            if(e) {
-                if (e.code !== 'EEXIST') {
-                    throw e;
-                } else {
-                    grunt.log.debug('already exists: ' + path.resolve(dirPath));
-                }
+        try {
+            fs.mkdirSync(dirPath);
+        } catch (e) {
+            if (e.code !== 'EEXIST') {
+                throw e;
+            } else {
+                grunt.log.debug('already exists: ' + path.resolve(dirPath));
             }
-        });
+        }
     }
 
     function link(target, linkName, options) {
